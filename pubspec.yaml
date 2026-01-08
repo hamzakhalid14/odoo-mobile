@@ -1,0 +1,35 @@
+name: odoo_mobile_app
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  # Pour les requêtes HTTP vers Odoo
+  http: ^1.2.1
+  # Pour gérer l'état (état partagé entre écrans)
+  provider: ^6.1.5
+  # Pour la navigation
+  go_router: ^14.3.0
+  # Pour stocker localement (token, préférences)
+  shared_preferences: ^2.2.2
+  # Pour les formulaires
+  flutter_form_builder: ^10.2.0
+  # Pour les chargements
+  flutter_spinkit: ^5.2.0
+  # Pour les notifications
+  fluttertoast: ^8.2.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
