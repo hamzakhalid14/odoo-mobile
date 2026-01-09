@@ -375,44 +375,155 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Center(
             child: Padding(
               padding: const EdgeInsets.all(20),
-              child: Text(
-                'Aucun module détecté',
-                style: TextStyle(color: Colors.grey[400]),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.extension_off,
+                    size: 48,
+                    color: Colors.grey[300],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Aucun module détecté',
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
             ),
           )
         else
           Container(
             decoration: BoxDecoration(
+              color: Colors.grey[50],
               border: Border.all(color: Colors.grey[200]!),
               borderRadius: BorderRadius.circular(AppConstants.borderRadius),
             ),
             child: ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _modules.take(10).length,
+              itemCount: _modules.length,
               separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[200]),
               itemBuilder: (context, index) {
+                final module = _modules[index];
                 return Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.check_circle_outline,
-                        size: 20,
-                        color: AppConstants.successColor,
+                      // Numéro d'index
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: AppConstants.primaryColor.withAlpha((255 * 0.15).toInt()),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              color: AppConstants.primaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
+                      // Icône et nom du module
                       Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.extension,
+                                  size: 16,
+                                  color: AppConstants.successColor,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    module,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Module installé',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Badge de statut
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppConstants.successColor.withAlpha((255 * 0.15).toInt()),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                         child: Text(
-                          _modules[index],
-                          style: const TextStyle(fontSize: 14),
+                          'OK',
+                          style: TextStyle(
+                            color: AppConstants.successColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 );
               },
+            ),
+          ),
+        
+        // Résumé des modules
+        if (_modules.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppConstants.infoColor.withAlpha((255 * 0.1).toInt()),
+                borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+                border: Border.all(
+                  color: AppConstants.infoColor.withAlpha((255 * 0.2).toInt()),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: AppConstants.infoColor,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '${_modules.length} module${_modules.length > 1 ? 's' : ''} installé${_modules.length > 1 ? 's' : ''} et actif${_modules.length > 1 ? 's' : ''}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppConstants.infoColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
       ],

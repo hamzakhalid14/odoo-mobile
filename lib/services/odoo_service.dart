@@ -198,7 +198,8 @@ class OdooService {
     }
 
     try {
-      final Map<String, dynamic> params = {
+      // ÉTAPE 1: Chercher les modules avec state='installed'
+      final Map<String, dynamic> searchParams = {
         'jsonrpc': '2.0',
         'method': 'call',
         'params': {
@@ -209,45 +210,110 @@ class OdooService {
             _uid,
             _password,
             'ir.module.module',
-            'search_read',
-            [['state', '=', 'installed']],
-            {'fields': ['name']},
+            'search',
+            [[['state', '=', 'installed']]],  // Triple brackets pour le domaine
           ],
         },
         'id': 1,
       };
 
-      print('📤 getInstalledModules: Envoi requête...');
+      print('📤 getInstalledModules: Recherche modules installés...');
       
-      final response = await http.post(
+      final searchResponse = await http.post(
         Uri.parse('$_baseUrl/jsonrpc'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(params),
+        body: jsonEncode(searchParams),
       ).timeout(AppConstants.apiTimeout);
 
-      print('📥 getInstalledModules: Réponse Status ${response.statusCode}');
-      print('📄 getInstalledModules: Body ${response.body}');
+      print('📥 getInstalledModules (search): Status ${searchResponse.statusCode}');
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseBody = jsonDecode(response.body);
+      if (searchResponse.statusCode == 200) {
+        final Map<String, dynamic> searchBody = jsonDecode(searchResponse.body);
         
-        if (responseBody.containsKey('result') && responseBody['result'] is List) {
-          List<String> modules = [];
-          for (var module in responseBody['result']) {
-            if (module is Map && module['name'] != null) {
-              modules.add(module['name'].toString());
+        if (searchBody.containsKey('result') && searchBody['result'] is List) {
+          final List<dynamic> allModuleIds = searchBody['result'];
+          print('✅ Trouvé ${allModuleIds.length} modules installés');
+          
+          if (allModuleIds.isEmpty) {
+            print('⚠️  Aucun module installé');
+            return [];
+          }
+
+          // Limiter à 200 modules max pour éviter surcharge
+          final List<dynamic> moduleIds = allModuleIds.length > 200 
+              ? allModuleIds.sublist(0, 200) 
+              : allModuleIds;
+          
+          if (allModuleIds.length > 200) {
+            print('⚠️  Limité à 200 modules sur ${allModuleIds.length}');
+          }
+
+          // ÉTAPE 2: Lire les détails des modules
+          // Note: read() attend [ids] comme premier arg, pas ids directement
+          // On lit tous les champs (pas de filtre) pour éviter les erreurs
+          final Map<String, dynamic> readParams = {
+            'jsonrpc': '2.0',
+            'method': 'call',
+            'params': {
+              'service': 'object',
+              'method': 'execute_kw',
+              'args': [
+                _database,
+                _uid,
+                _password,
+                'ir.module.module',
+                'read',
+                [moduleIds],  // Liste de IDs
+              ],
+            },
+            'id': 1,
+          };
+
+          print('📤 getInstalledModules: Lecture des détails...');
+          
+          final readResponse = await http.post(
+            Uri.parse('$_baseUrl/jsonrpc'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(readParams),
+          ).timeout(AppConstants.apiTimeout);
+
+          print('📥 getInstalledModules (read): Status ${readResponse.statusCode}');
+
+          if (readResponse.statusCode == 200) {
+            final Map<String, dynamic> readBody = jsonDecode(readResponse.body);
+            
+            if (readBody.containsKey('result') && readBody['result'] is List) {
+              List<String> installedModules = [];
+              
+              for (var module in readBody['result']) {
+                if (module is Map) {
+                  // Essayer display_name en priorité, sinon name
+                  final String? displayName = module['display_name']?.toString();
+                  final String? name = module['name']?.toString();
+                  
+                  if (displayName != null && displayName.isNotEmpty) {
+                    installedModules.add(displayName);
+                  } else if (name != null && name.isNotEmpty) {
+                    installedModules.add(name);
+                  }
+                }
+              }
+              
+              print('✅ getInstalledModules: ${installedModules.length} modules récupérés');
+              return installedModules;
+            } else if (readBody.containsKey('error')) {
+              print('❌ getInstalledModules (read): Erreur ${readBody['error']}');
             }
           }
-          print('✅ getInstalledModules: ${modules.length} modules trouvés');
-          return modules;
-        } else {
-          print('⚠️  getInstalledModules: Pas de result dans la réponse');
+        } else if (searchBody.containsKey('error')) {
+          print('❌ getInstalledModules (search): Erreur ${searchBody['error']['message']}');
         }
       }
-      print('❌ getInstalledModules: Aucun module retourné');
+      
+      print('❌ getInstalledModules: Impossible de récupérer les modules');
       return [];
     } catch (e) {
-      print('❌ getInstalledModules: Erreur $e');
+      print('❌ getInstalledModules: Exception $e');
       return [];
     }
   }
