@@ -16,7 +16,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final OdooService _odooService = OdooService(); // Utilise le singleton
   Map<String, dynamic>? _userInfo;
-  List<String> _modules = [];
+  List<ModuleInfo> _modules = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -92,7 +92,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (confirm ?? false) {
       try {
-        await OdooService.logout();
+        await _odooService.fullLogout();
         
         if (mounted) {
           // Retour à l'accueil
@@ -410,81 +410,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 final module = _modules[index];
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  child: Row(
-                    children: [
-                      // Numéro d'index
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: AppConstants.primaryColor.withAlpha((255 * 0.15).toInt()),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              color: AppConstants.primaryColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
+                  child: InkWell(
+                    onTap: () => _showModuleDetails(module),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: AppConstants.primaryColor.withAlpha((255 * 0.15).toInt()),
+                            shape: BoxShape.circle,
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Icône et nom du module
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.extension,
-                                  size: 16,
-                                  color: AppConstants.successColor,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    module,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Module installé',
+                          child: Center(
+                            child: Text(
+                              '${index + 1}',
                               style: TextStyle(
+                                color: AppConstants.primaryColor,
+                                fontWeight: FontWeight.bold,
                                 fontSize: 12,
-                                color: Colors.grey[500],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      // Badge de statut
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppConstants.successColor.withAlpha((255 * 0.15).toInt()),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'OK',
-                          style: TextStyle(
-                            color: AppConstants.successColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.extension,
+                                    size: 16,
+                                    color: AppConstants.successColor,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      module.name,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                module.summary.isNotEmpty ? module.summary : 'Module installé',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppConstants.successColor.withAlpha((255 * 0.15).toInt()),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            module.state.toUpperCase(),
+                            style: TextStyle(
+                              color: AppConstants.successColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -649,6 +652,105 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showModuleDetails(ModuleInfo module) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppConstants.primaryColor.withAlpha((255 * 0.1).toInt()),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.extension, color: AppConstants.primaryColor),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          module.name,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          module.technicalName,
+                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppConstants.successColor.withAlpha((255 * 0.15).toInt()),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      module.state.toUpperCase(),
+                      style: TextStyle(
+                        color: AppConstants.successColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (module.summary.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    module.summary,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  _buildDetailChip('Version', module.version.isNotEmpty ? module.version : 'N/A'),
+                  _buildDetailChip('Auteur', module.author.isNotEmpty ? module.author : 'N/A'),
+                  _buildDetailChip('Application', module.technicalName),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailChip(String label, String value) {
+    return Chip(
+      backgroundColor: Colors.grey[100],
+      label: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+          ),
+        ],
       ),
     );
   }

@@ -4,6 +4,38 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 
+class ModuleInfo {
+  final int id;
+  final String name;
+  final String technicalName;
+  final String state;
+  final String author;
+  final String version;
+  final String summary;
+
+  ModuleInfo({
+    required this.id,
+    required this.name,
+    required this.technicalName,
+    required this.state,
+    required this.author,
+    required this.version,
+    required this.summary,
+  });
+
+  factory ModuleInfo.fromJson(Map<String, dynamic> json) {
+    return ModuleInfo(
+      id: json['id'] as int,
+      name: (json['display_name'] ?? json['name'] ?? 'Module').toString(),
+      technicalName: (json['name'] ?? '').toString(),
+      state: (json['state'] ?? '').toString(),
+      author: (json['author'] ?? 'Inconnu').toString(),
+      version: (json['latest_version'] ?? json['installed_version'] ?? '').toString(),
+      summary: (json['summary'] ?? json['shortdesc'] ?? '').toString(),
+    );
+  }
+}
+
 class OdooService {
   static final OdooService _instance = OdooService._internal();
   
@@ -189,7 +221,7 @@ class OdooService {
     }
   }
 
-  Future<List<String>> getInstalledModules() async {
+  Future<List<ModuleInfo>> getInstalledModules() async {
     print('📦 getInstalledModules: _uid = $_uid');
     
     if (_uid == null) {
@@ -250,7 +282,6 @@ class OdooService {
 
           // ÉTAPE 2: Lire les détails des modules
           // Note: read() attend [ids] comme premier arg, pas ids directement
-          // On lit tous les champs (pas de filtre) pour éviter les erreurs
           final Map<String, dynamic> readParams = {
             'jsonrpc': '2.0',
             'method': 'call',
@@ -263,7 +294,23 @@ class OdooService {
                 _password,
                 'ir.module.module',
                 'read',
-                [moduleIds],  // Liste de IDs
+                [moduleIds],
+                {
+                  'fields': [
+                    'id',
+                    'name',
+                    'display_name',
+                    'summary',
+                    'shortdesc',
+                    'state',
+                    'author',
+                    'website',
+                    'latest_version',
+                    'installed_version',
+                    'application',
+                    'license',
+                  ],
+                },
               ],
             },
             'id': 1,
@@ -283,19 +330,11 @@ class OdooService {
             final Map<String, dynamic> readBody = jsonDecode(readResponse.body);
             
             if (readBody.containsKey('result') && readBody['result'] is List) {
-              List<String> installedModules = [];
+              final List<ModuleInfo> installedModules = [];
               
               for (var module in readBody['result']) {
-                if (module is Map) {
-                  // Essayer display_name en priorité, sinon name
-                  final String? displayName = module['display_name']?.toString();
-                  final String? name = module['name']?.toString();
-                  
-                  if (displayName != null && displayName.isNotEmpty) {
-                    installedModules.add(displayName);
-                  } else if (name != null && name.isNotEmpty) {
-                    installedModules.add(name);
-                  }
+                if (module is Map && module['id'] != null) {
+                  installedModules.add(ModuleInfo.fromJson(module.cast<String, dynamic>()));
                 }
               }
               
@@ -368,6 +407,13 @@ class OdooService {
     await prefs.remove(AppConstants.keyOdooUserId);
     await prefs.remove(AppConstants.keyIsLoggedIn);
     await prefs.remove(AppConstants.keyOdooSessionId);
+  }
+
+  /// Réinitialise l'état en mémoire et efface le stockage
+  Future<void> fullLogout() async {
+    _uid = null;
+    _password = '';
+    await OdooService.logout();
   }
 
   // =========================================

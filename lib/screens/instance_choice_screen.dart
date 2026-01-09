@@ -120,6 +120,21 @@ class _InstanceChoiceScreenState extends State<InstanceChoiceScreen> {
                     const SizedBox(height: 20),
 
                     // ========================================
+                    // OPTION 3: CRÉER UNE INSTANCE
+                    // ========================================
+                    _buildOption(
+                      context,
+                      icon: Icons.add_circle_outline,
+                      title: 'Créer une instance',
+                      subtitle: 'Guide pas à pas',
+                      description: 'Suivez les étapes pour installer Odoo\nlocalement et configurer PostgreSQL',
+                      onTap: () => context.push('/create-instance'),
+                      color: Colors.purple,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ========================================
                     // OPTION 3: VÉRIFIER L'INSTANCE
                     // ========================================
                     _buildOption(
