@@ -107,24 +107,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       // ========================================
-      // BARRE D'APPLICATION
+      // BARRE D'APPLICATION (style Odoo)
       // ========================================
       appBar: AppBar(
-        title: const Text('Tableau de bord'),
-        backgroundColor: AppConstants.primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
+        title: const Row(
+          children: [
+            Icon(Icons.dashboard, size: 24),
+            SizedBox(width: 12),
+            Text('Dashboard'),
+          ],
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 1,
+        shadowColor: Colors.grey.withOpacity(0.3),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {},
+            tooltip: 'Rechercher',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _isLoading ? null : _loadData,
             tooltip: 'Actualiser',
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
-            tooltip: 'Déconnexion',
+          PopupMenuButton(
+            icon: const Icon(Icons.more_vert),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                onTap: _loadData,
+                child: const Row(
+                  children: [
+                    Icon(Icons.refresh, size: 18),
+                    SizedBox(width: 12),
+                    Text('Actualiser'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                onTap: _logout,
+                child: const Row(
+                  children: [
+                    Icon(Icons.logout, size: 18, color: Colors.red),
+                    SizedBox(width: 12),
+                    Text('Déconnexion', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -140,41 +173,152 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // ===== PROFIL UTILISATEUR =====
-                      _buildUserProfileCard(),
+                      // ===== PROFIL UTILISATEUR (Header Odoo) =====
+                      _buildOdooHeaderCard(),
 
-                      const SizedBox(height: 20),
-
-                      // ===== STATISTIQUES =====
+                      // ===== MODULES INSTALLÉS (Grille Odoo) =====
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppConstants.defaultPadding),
-                        child: _buildStatsSection(),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // ===== MODULES INSTALLÉS =====
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppConstants.defaultPadding),
+                        padding: const EdgeInsets.all(AppConstants.defaultPadding),
                         child: _buildModulesSection(),
                       ),
 
                       const SizedBox(height: 20),
-
-                      // ===== ACTIONS RAPIDES =====
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppConstants.defaultPadding),
-                        child: _buildQuickActionsSection(),
-                      ),
-
-                      const SizedBox(height: 30),
                     ],
                   ),
                 ),
     );
   }
 
-  /// Carte de profil utilisateur
+  /// En-tête Odoo avec profil utilisateur
+  Widget _buildOdooHeaderCard() {
+    final userName = _userInfo?['name'] ?? 'Utilisateur';
+    final email = _userInfo?['email'] ?? 'email@example.com';
+    final companyId = _userInfo?['company_id'] ?? ['1', 'Company'];
+    final company = companyId is List ? companyId[1] : 'Entreprise';
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(AppConstants.defaultPadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Avatar
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  color: AppConstants.primaryColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppConstants.primaryColor.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.person,
+                  color: Colors.white,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(width: 20),
+              
+              // Infos
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userName,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      email,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppConstants.primaryColor.withAlpha((255 * 0.1).toInt()),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        company,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppConstants.primaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 20),
+          Divider(color: Colors.grey[200]),
+          const SizedBox(height: 16),
+
+          // Stats en bas
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatBadge('Modules', '${_modules.length}', Icons.extension),
+              Container(
+                width: 1,
+                height: 40,
+                color: Colors.grey[300],
+              ),
+              _buildStatBadge('Statut', 'Connecté', Icons.check_circle),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Badge de statistique
+  Widget _buildStatBadge(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, size: 24, color: AppConstants.primaryColor),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Carte de profil utilisateur (ancienne, supprimée)
   Widget _buildUserProfileCard() {
     final userName = _userInfo?['name'] ?? 'Utilisateur';
     final email = _userInfo?['email'] ?? 'email@example.com';
@@ -257,84 +401,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  /// Section de statistiques
+  /// Section de statistiques (supprimée - intégrée dans l'en-tête)
   Widget _buildStatsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Statistiques',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Grille de stats
-        GridView.count(
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            _buildStatCard(
-              title: 'Modules',
-              value: '${_modules.length}',
-              icon: Icons.extension,
-              color: Colors.blue,
-            ),
-            _buildStatCard(
-              title: 'Connecté',
-              value: 'OUI',
-              icon: Icons.check_circle,
-              color: Colors.green,
-            ),
-          ],
-        ),
-      ],
-    );
+    return const SizedBox.shrink();
   }
 
-  /// Carte de statistique
+  /// Carte de statistique (supprimée)
   Widget _buildStatCard({
     required String title,
     required String value,
     required IconData icon,
     required Color color,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color.withAlpha((255 * 0.1).toInt()),
-        borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-        border: Border.all(color: color.withAlpha((255 * 0.2).toInt())),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 12,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+    return const SizedBox.shrink();
   }
 
   /// Section des modules installés
@@ -346,8 +425,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Modules installés',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              'Applications Disponibles',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -368,9 +447,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
 
-        // Liste des modules
+        // Grille de modules (4 colonnes pour desktop, 2 pour mobile)
         if (_modules.isEmpty)
           Center(
             child: Padding(
@@ -395,142 +474,187 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           )
         else
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              border: Border.all(color: Colors.grey[200]!),
-              borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 0.8,
             ),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _modules.length,
-              separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[200]),
-              itemBuilder: (context, index) {
-                final module = _modules[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  child: InkWell(
-                    onTap: () => _showModuleDetails(module),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withAlpha((255 * 0.15).toInt()),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                color: AppConstants.primaryColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.extension,
-                                    size: 16,
-                                    color: AppConstants.successColor,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      module.name,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                module.summary.isNotEmpty ? module.summary : 'Module installé',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[500],
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppConstants.successColor.withAlpha((255 * 0.15).toInt()),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            module.state.toUpperCase(),
-                            style: TextStyle(
-                              color: AppConstants.successColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        
-        // Résumé des modules
-        if (_modules.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppConstants.infoColor.withAlpha((255 * 0.1).toInt()),
-                borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                border: Border.all(
-                  color: AppConstants.infoColor.withAlpha((255 * 0.2).toInt()),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 18,
-                    color: AppConstants.infoColor,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '${_modules.length} module${_modules.length > 1 ? 's' : ''} installé${_modules.length > 1 ? 's' : ''} et actif${_modules.length > 1 ? 's' : ''}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppConstants.infoColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            itemCount: _modules.length,
+            itemBuilder: (context, index) {
+              final module = _modules[index];
+              return _buildModuleCard(module);
+            },
           ),
       ],
     );
+  }
+
+  /// Carte d'un module (style Odoo app store)
+  Widget _buildModuleCard(ModuleInfo module) {
+    // Déterminer la couleur par catégorie
+    final Color categoryColor = _getCategoryColor(module.category);
+
+    return Material(
+      child: InkWell(
+        onTap: () => _showModuleDetails(module),
+        borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.grey[200]!),
+            borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.08),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Icône grande
+              Container(
+                height: 80,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      categoryColor,
+                      categoryColor.withOpacity(0.8),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(AppConstants.borderRadius),
+                    topRight: Radius.circular(AppConstants.borderRadius),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    module.isApplication ? Icons.apps : Icons.extension,
+                    size: 48,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              // Contenu
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Nom et description
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Nom du module
+                          Text(
+                            module.name,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              height: 1.1,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+
+                          // Description courte
+                          Text(
+                            module.summary.isNotEmpty 
+                              ? module.summary 
+                              : module.category,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                              height: 1.3,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+
+                      // Boutons et badge en bas
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Badge de statut
+                          Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppConstants.successColor.withAlpha((255 * 0.15).toInt()),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Installed',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppConstants.successColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Learn More link
+                          GestureDetector(
+                            onTap: () => _showModuleDetails(module),
+                            child: Center(
+                              child: Text(
+                                'Learn More',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppConstants.primaryColor,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Déterminer la couleur basée sur la catégorie
+  Color _getCategoryColor(String category) {
+    final colors = {
+      'Accounting': const Color(0xFF6E48A6),
+      'Accounting': Colors.orange,
+      'Sales': Colors.blue,
+      'Inventory': Colors.green,
+      'Manufacturing': const Color(0xFFFF6B35),
+      'CRM': const Color(0xFF004E89),
+      'Website': const Color(0xFF1B4965),
+      'Marketing': const Color(0xFFF77F00),
+      'HR': const Color(0xFF06A77D),
+      'Project': const Color(0xFF8E44AD),
+      'Helpdesk': const Color(0xFFE74C3C),
+    };
+    
+    return colors[category] ?? AppConstants.primaryColor;
   }
 
   /// Section des actions rapides
@@ -571,52 +695,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   /// Bouton d'action rapide
+  /// Bouton d'action rapide (supprimé)
   Widget _buildActionButton({
     required String label,
     required IconData icon,
     required VoidCallback onTap,
     bool isDestructive = false,
   }) {
-    return Material(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDestructive 
-                ? Colors.red.withAlpha((255 * 0.1).toInt())
-                : AppConstants.primaryColor.withAlpha((255 * 0.1).toInt()),
-            borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-            border: Border.all(
-              color: isDestructive 
-                  ? Colors.red.withAlpha((255 * 0.2).toInt())
-                  : AppConstants.primaryColor.withAlpha((255 * 0.2).toInt()),
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: isDestructive ? Colors.red : AppConstants.primaryColor,
-                size: 28,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isDestructive ? Colors.red : AppConstants.primaryColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 
   /// État d'erreur

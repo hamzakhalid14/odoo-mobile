@@ -126,7 +126,22 @@ class _InstanceChoiceScreenState extends State<InstanceChoiceScreen> {
                       context,
                       icon: Icons.add_circle_outline,
                       title: 'Créer une instance',
-                      subtitle: 'Guide pas à pas',
+                      subtitle: 'Nouvelle base de données',
+                      description: 'Créez une nouvelle base de données Odoo\ndirectement depuis l\'application',
+                      onTap: () => context.push('/database-manager'),
+                      color: Colors.green,
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ========================================
+                    // OPTION 4: GUIDE D'INSTALLATION
+                    // ========================================
+                    _buildOption(
+                      context,
+                      icon: Icons.book_outlined,
+                      title: 'Guide d\'installation',
+                      subtitle: 'Installer Odoo manuellement',
                       description: 'Suivez les étapes pour installer Odoo\nlocalement et configurer PostgreSQL',
                       onTap: () => context.push('/create-instance'),
                       color: Colors.purple,
@@ -135,7 +150,7 @@ class _InstanceChoiceScreenState extends State<InstanceChoiceScreen> {
                     const SizedBox(height: 20),
 
                     // ========================================
-                    // OPTION 3: VÉRIFIER L'INSTANCE
+                    // OPTION 5: VÉRIFIER L'INSTANCE
                     // ========================================
                     _buildOption(
                       context,

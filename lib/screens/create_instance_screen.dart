@@ -165,6 +165,19 @@ class CreateInstanceScreen extends StatelessWidget {
               // 4️⃣ BOUTONS D'ACTION
               // ========================================
               ElevatedButton.icon(
+                onPressed: () => context.push('/database-manager'),
+                icon: const Icon(Icons.storage),
+                label: const Text('CRÉER UNE INSTANCE MAINTENANT'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              ElevatedButton.icon(
                 onPressed: () => context.push('/check-instance'),
                 icon: const Icon(Icons.cloud_done),
                 label: const Text('VÉRIFIER L\'INSTANCE'),

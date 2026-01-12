@@ -9,6 +9,7 @@ import 'screens/welcome_screen.dart';
 import 'screens/instance_choice_screen.dart';
 import 'screens/check_instance_screen.dart';
 import 'screens/create_instance_screen.dart';
+import 'screens/database_manager_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 
@@ -117,7 +118,14 @@ class MyApp extends StatelessWidget {
           builder: (context, state) => const CreateInstanceScreen(),
         ),
         
-        // ROUTE 5: CONNEXION
+        // ROUTE 5: GESTIONNAIRE DE BASES DE DONNÉES
+        GoRoute(
+          path: '/database-manager',
+          name: 'database-manager',
+          builder: (context, state) => const DatabaseManagerScreen(),
+        ),
+        
+        // ROUTE 6: CONNEXION
         GoRoute(
           path: '/login',
           name: 'login',
@@ -126,7 +134,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
         
-        // ROUTE 6: TABLEAU DE BORD
+        // ROUTE 7: TABLEAU DE BORD
         GoRoute(
           path: '/dashboard',
           name: 'dashboard',

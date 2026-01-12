@@ -12,6 +12,10 @@ class ModuleInfo {
   final String author;
   final String version;
   final String summary;
+  final String category;
+  final String license;
+  final String website;
+  final bool isApplication;
 
   ModuleInfo({
     required this.id,
@@ -21,6 +25,10 @@ class ModuleInfo {
     required this.author,
     required this.version,
     required this.summary,
+    required this.category,
+    required this.license,
+    required this.website,
+    required this.isApplication,
   });
 
   factory ModuleInfo.fromJson(Map<String, dynamic> json) {
@@ -28,10 +36,14 @@ class ModuleInfo {
       id: json['id'] as int,
       name: (json['display_name'] ?? json['name'] ?? 'Module').toString(),
       technicalName: (json['name'] ?? '').toString(),
-      state: (json['state'] ?? '').toString(),
+      state: (json['state'] ?? 'uninstalled').toString(),
       author: (json['author'] ?? 'Inconnu').toString(),
-      version: (json['latest_version'] ?? json['installed_version'] ?? '').toString(),
+      version: (json['latest_version'] ?? json['installed_version'] ?? '1.0').toString(),
       summary: (json['summary'] ?? json['shortdesc'] ?? '').toString(),
+      category: (json['category_id'] is List ? json['category_id'][1] : json['category_id'] ?? 'Autre').toString(),
+      license: (json['license'] ?? 'LGPL-3').toString(),
+      website: (json['website'] ?? '').toString(),
+      isApplication: json['application'] ?? false,
     );
   }
 }
@@ -309,6 +321,7 @@ class OdooService {
                     'installed_version',
                     'application',
                     'license',
+                    'category_id',
                   ],
                 },
               ],
@@ -414,6 +427,248 @@ class OdooService {
     _uid = null;
     _password = '';
     await OdooService.logout();
+  }
+
+  // =========================================
+  // GESTION DES BASES DE DONNÉES
+  // =========================================
+
+  /// Liste toutes les bases de données disponibles sur le serveur
+  static Future<List<String>> listDatabases(String baseUrl) async {
+    try {
+      print('📋 Récupération de la liste des bases de données...');
+      
+      final Map<String, dynamic> params = {
+        'jsonrpc': '2.0',
+        'method': 'call',
+        'params': {
+          'service': 'db',
+          'method': 'list',
+          'args': [],
+        },
+        'id': 1,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/jsonrpc'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(params),
+      ).timeout(AppConstants.apiTimeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseBody = jsonDecode(response.body);
+        
+        if (responseBody.containsKey('result') && responseBody['result'] is List) {
+          final List<String> databases = (responseBody['result'] as List)
+              .map((e) => e.toString())
+              .toList();
+          print('✅ ${databases.length} base(s) de données trouvée(s)');
+          return databases;
+        }
+      }
+      
+      print('❌ Impossible de récupérer la liste des bases de données');
+      return [];
+    } catch (e) {
+      print('❌ Erreur listDatabases: $e');
+      return [];
+    }
+  }
+
+  /// Crée une nouvelle base de données
+  static Future<Map<String, dynamic>> createDatabase({
+    required String baseUrl,
+    required String masterPassword,
+    required String databaseName,
+    required String adminPassword,
+    String lang = 'fr_FR',
+    String? country,
+  }) async {
+    try {
+      print('🔨 Création de la base de données: $databaseName');
+      
+      final Map<String, dynamic> params = {
+        'jsonrpc': '2.0',
+        'method': 'call',
+        'params': {
+          'service': 'db',
+          'method': 'create_database',
+          'args': [
+            masterPassword,      // Master password du serveur
+            databaseName,        // Nom de la base
+            true,                // demo data
+            lang,                // Langue
+            adminPassword,       // Mot de passe admin
+            'admin',             // Login admin
+            country ?? 'MA',     // Pays
+          ],
+        },
+        'id': 1,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/jsonrpc'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(params),
+      ).timeout(const Duration(minutes: 5)); // Création peut être longue
+
+      print('📥 Réponse création DB: Status ${response.statusCode}');
+      print('📄 Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseBody = jsonDecode(response.body);
+        
+        if (responseBody.containsKey('error')) {
+          final error = responseBody['error'];
+          String errorMsg = error['data']?['message'] ?? error['message'] ?? 'Erreur inconnue';
+          
+          // Détecter les erreurs PostgreSQL courantes
+          if (errorMsg.contains('collationnements') || errorMsg.contains('collation')) {
+            errorMsg = 'Erreur PostgreSQL: Problème de collation/encodage.\n\n'
+                'Solutions:\n'
+                '1. Utilisez template0: CREATE DATABASE $databaseName TEMPLATE template0 LC_COLLATE \'C\' LC_CTYPE \'C\';\n'
+                '2. Ou configurez PostgreSQL avec initdb --locale=C\n'
+                '3. Vérifiez le port PostgreSQL (5433 détecté, standard: 5432)';
+          } else if (errorMsg.contains('connection') || errorMsg.contains('connexion')) {
+            errorMsg = 'Impossible de se connecter à PostgreSQL.\n\n'
+                'Vérifiez que:\n'
+                '• PostgreSQL est démarré\n'
+                '• Le port est correct (actuellement 5433)\n'
+                '• L\'utilisateur odoo existe avec les droits CREATEDB\n'
+                '• Le fichier pg_hba.conf autorise les connexions locales';
+          } else if (errorMsg.contains('password') || errorMsg.contains('authentication')) {
+            errorMsg = 'Erreur d\'authentification PostgreSQL ou Master Password incorrect';
+          }
+          
+          return {
+            'success': false,
+            'message': errorMsg,
+            'raw_error': error.toString(),
+          };
+        }
+        
+        if (responseBody.containsKey('result')) {
+          print('✅ Base de données créée avec succès');
+          return {
+            'success': true,
+            'message': 'Base de données "$databaseName" créée avec succès',
+            'database': databaseName,
+          };
+        }
+      }
+      
+      return {
+        'success': false,
+        'message': 'Erreur HTTP ${response.statusCode}',
+      };
+    } catch (e) {
+      print('❌ Erreur createDatabase: $e');
+      return {
+        'success': false,
+        'message': 'Erreur de connexion: ${e.toString()}\n\nVérifiez que le serveur Odoo est accessible',
+      };
+    }
+  }
+
+  /// Duplique une base de données existante
+  static Future<Map<String, dynamic>> duplicateDatabase({
+    required String baseUrl,
+    required String masterPassword,
+    required String sourceDb,
+    required String targetDb,
+  }) async {
+    try {
+      print('📋 Duplication: $sourceDb → $targetDb');
+      
+      final Map<String, dynamic> params = {
+        'jsonrpc': '2.0',
+        'method': 'call',
+        'params': {
+          'service': 'db',
+          'method': 'duplicate_database',
+          'args': [masterPassword, sourceDb, targetDb],
+        },
+        'id': 1,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/jsonrpc'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(params),
+      ).timeout(const Duration(minutes: 5));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseBody = jsonDecode(response.body);
+        
+        if (responseBody.containsKey('error')) {
+          return {
+            'success': false,
+            'message': responseBody['error']['data']?['message'] ?? 'Erreur de duplication',
+          };
+        }
+        
+        if (responseBody.containsKey('result') && responseBody['result'] == true) {
+          return {
+            'success': true,
+            'message': 'Base de données dupliquée avec succès',
+          };
+        }
+      }
+      
+      return {'success': false, 'message': 'Erreur inconnue'};
+    } catch (e) {
+      return {'success': false, 'message': 'Erreur: $e'};
+    }
+  }
+
+  /// Supprime une base de données
+  static Future<Map<String, dynamic>> dropDatabase({
+    required String baseUrl,
+    required String masterPassword,
+    required String databaseName,
+  }) async {
+    try {
+      print('🗑️ Suppression de la base: $databaseName');
+      
+      final Map<String, dynamic> params = {
+        'jsonrpc': '2.0',
+        'method': 'call',
+        'params': {
+          'service': 'db',
+          'method': 'drop',
+          'args': [masterPassword, databaseName],
+        },
+        'id': 1,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/jsonrpc'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(params),
+      ).timeout(AppConstants.apiTimeout);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseBody = jsonDecode(response.body);
+        
+        if (responseBody.containsKey('error')) {
+          return {
+            'success': false,
+            'message': responseBody['error']['data']?['message'] ?? 'Erreur de suppression',
+          };
+        }
+        
+        if (responseBody.containsKey('result') && responseBody['result'] == true) {
+          return {
+            'success': true,
+            'message': 'Base de données supprimée',
+          };
+        }
+      }
+      
+      return {'success': false, 'message': 'Erreur inconnue'};
+    } catch (e) {
+      return {'success': false, 'message': 'Erreur: $e'};
+    }
   }
 
   // =========================================
